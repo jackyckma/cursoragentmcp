@@ -68,6 +68,9 @@ npx @modelcontextprotocol/inspector
    `https://<your-service>.zeabur.app/mcp`.
 5. A `GET /health` route is included for Zeabur's health checks.
 
+See [Setup Guide](#setup-guide) for the full walkthrough (API key, Zeabur
+variables, and connecting from Claude).
+
 ## Connecting from an MCP client
 
 Add a remote MCP connector pointing at `https://<your-service>.zeabur.app/mcp`
@@ -83,6 +86,66 @@ MCP, so any spec-compliant client works.
 
 For local stdio use (e.g. Claude Desktop config), set `TRANSPORT=stdio` and
 point the client at `node dist/index.js` with `CURSOR_API_KEY` in its `env`.
+
+Claude-specific steps (custom connector, request headers, per-conversation
+toggle) are in [Setup Guide → Connecting to Claude](#3-connecting-to-claude-claudeai).
+
+## Setup Guide
+
+End-to-end path from a Cursor API key to a working Claude connector.
+
+### 1. Getting a Cursor API key
+
+1. Open the [Cursor Dashboard](https://cursor.com/dashboard).
+2. Go to **API Keys**. On older dashboards this may be under **Integrations**.
+3. Create a new key and copy it somewhere safe.
+
+This key can create **billable Cloud Agent runs**. Treat it like a password —
+do not commit it, paste it into chat, or share it.
+
+### 2. Configuring Zeabur
+
+After you have deployed this repo as a service on Zeabur (it auto-detects the
+`Dockerfile`):
+
+1. Open the service's **Variables** / **Environment** settings.
+2. Set the following:
+
+   | Variable | Value |
+   |---|---|
+   | `CURSOR_API_KEY` | The key from step 1. |
+   | `MCP_SERVER_TOKEN` | A random secret you generate yourself, e.g. `openssl rand -hex 32`. This protects the public `/mcp` endpoint from unauthenticated use. |
+
+   `PORT` is injected automatically by Zeabur — you do not need to set it.
+3. Save. Zeabur will redeploy the service.
+4. Once it's up, the public MCP endpoint is:
+
+   ```
+   https://<service>.zeabur.app/mcp
+   ```
+
+   Hit `https://<service>.zeabur.app/health` to confirm the service is running.
+
+### 3. Connecting to Claude (claude.ai)
+
+1. In Claude, go to **Customize → Connectors**.
+2. Click **+**, then select **Add custom connector**.
+3. Enter a **Name** and the **Remote MCP server URL** — the Zeabur `/mcp`
+   URL from step 2 (e.g. `https://<service>.zeabur.app/mcp`).
+4. Set **Authentication** to **None**. This server does not use OAuth.
+5. Open **Request headers**, then add a header:
+   - Name: `authorization` (or **Custom header** → `Authorization`)
+   - Value: `Bearer <MCP_SERVER_TOKEN>` — the same token you set on Zeabur.
+     There must be a space after `Bearer`.
+   - Mark the header **Required**.
+6. Click **Add**.
+
+The **Request headers** section is currently in beta and may not be visible
+on all Claude accounts yet.
+
+To use the connector in a conversation: click the **+** button in the chat,
+select **Add connectors**, and toggle it on. Connectors are enabled
+**per-conversation**, not globally.
 
 ## Security notes
 
